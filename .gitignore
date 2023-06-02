@@ -1,0 +1,11 @@
+# Windows default autosave extension
+*.asv
+
+# OSX / *nix default autosave extension
+*.m~
+
+
+# Large MAT files and non required directories
+/data/*.mat
+/data/phantomx/
+
