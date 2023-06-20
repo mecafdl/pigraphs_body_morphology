@@ -1,38 +1,54 @@
-%% **************************************************************************
-%         MORPHOLOGY LEARNING OF THE FRANKA EMIKA ROBOT MANIPULATOR
-% *************************************************************************
 
-clearvars
+%% **************************************************************************
+%                Computation of the MI matrix using JIDT                  *
+% *************************************************************************
 clc
 close all
+load('./data/phantomx_parameters.mat')
+path_root = fullfile(pwd,'data','phantomx');
+% clear  spectral_distance matrix_distance sum_squared_distances g_ssd_mavg edge_error
 
-% Load configuration parameters
-load('./data/franka_parameters.mat')
+%% Load datasets
 
-% Load the dataset
-MOVING_BASE = 1;
-if ~MOVING_BASE
-    load('./data/franka_proprioception_simulated_fixed_base.mat')
-else
-    load('./data/franka_proprioception_simulated_moving_base.mat')
+phantomx_proprioception.dataset1 = fcn_phantomx_get_values_from_gazebo({fullfile(path_root, strcat('pxmark4_memory_b1'))}, 0, constPar);
+phantomx_proprioception.dataset2 = fcn_phantomx_get_values_from_gazebo({fullfile(path_root, strcat('pxmark4_memory_b2'))}, 0, constPar);
+phantomx_proprioception.dataset3 = fcn_phantomx_get_values_from_gazebo({fullfile(path_root, strcat('pxmark4_memory_b3'))}, 0, constPar);
+phantomx_proprioception.dataset4 = fcn_phantomx_get_values_from_gazebo({fullfile(path_root, strcat('pxmark4_memory_b4'))}, 0, constPar);
+phantomx_proprioception.dataset5 = fcn_phantomx_get_values_from_gazebo({fullfile(path_root, strcat('pxmark4_memory_b5'))}, 0, constPar);
+
+%% Load parameters
+load('./data/phantomx_proprioception.mat')
+
+% The rows of each of the datasets is organized as follows:
+% - q_indices       = 1:18;
+% - dq_indices      = 19:36;
+% - torque_indices  = 37:54;
+% - ang_vel_indices = 55:111;
+% - lin_acc_indices = 112:168;
+
+q_indices       = 1:18;
+dq_indices      = 19:36;
+torque_indices  = 37:54;
+ang_vel_indices = 55:111;
+lin_acc_indices = 112:168;
+
+%% Create the proprioceptive signals matrix
+clc
+close all
+proprioception = [];
+
+fn = fieldnames(phantomx_proprioception);
+for k=1:numel(fn)
+    if( isnumeric(phantomx_proprioception.(fn{k})) )
+        proprioception_aux = [phantomx_proprioception.(fn{k})([q_indices,dq_indices,torque_indices,ang_vel_indices],:); ...
+                          0*phantomx_proprioception.(fn{k})(ang_vel_indices,:); ...
+                          0*phantomx_proprioception.(fn{k})(ang_vel_indices,:); ...
+                          phantomx_proprioception.(fn{k})(lin_acc_indices,:)];
+        proprioception = [proprioception proprioception_aux];
+    end
 end
-q_indices       = 1:7;
-dq_indices      = 8:14;
-ddq_indices     = 15:21;
-torque_indices  = 22:28;
-ang_vel_indices = 29:52;
-lin_vel_indices = 53:76;
-ang_acc_indices = 77:100;
-lin_acc_indices = 101:124;   
+disp('done')
 
-
-proprioception = signals([q_indices, ...
-                          dq_indices, ...
-                          torque_indices, ...
-                          ang_vel_indices, ...
-                          lin_vel_indices, ...
-                          ang_acc_indices, ...
-                          lin_acc_indices],:);
 %% **************************************************************************
 %                       COMPUTATION OF THE MI MATRIX                      *
 % *************************************************************************
@@ -45,10 +61,10 @@ BUFFER_SIZE = 10000;
 % Initialize the replay buffer
 buffer = replayBuffer(BUFFER_SIZE, size(proprioception,1));
 
-n_mi_matrices = round(length(signals)/BATCH_SIZE);
+n_mi_matrices = round(length(proprioception)/BATCH_SIZE);
 
 total_loops                = 1;
-n_datasets                 = 5;
+n_datasets                 = 1;
 
 for loop = 1:total_loops
     dataSet   = repmat(proprioception,1,n_datasets);
@@ -144,77 +160,47 @@ ylabel('|\Delta TMI|')
 xlabel('Batches')
 xlim([1 batch])
 
- 
-% Display the MI matrix
-W_MI                          = squeeze(MI_cmean(:,:,batch));    
+%% Plot proprioceptive kinematics graph
+clc
+
 constPar.showClusters         = 1;
 constPar.plotting.interpreter = 'latex'; 
 constPar.useNodeLabels        = 1;
-clc
 
-% Plot proprioceptive kinematics graph
 GRAPH_CHOICE = 'dq-omg';
 NORMALIZE    = 0;
 PRUNE        = 1; 
+
+W_MI         = squeeze(MI_cmean(:,:,batch));    
 mi_graphs    = fcn_plot_robot_mi_matrix_graphs(exp(W_MI) - 1*0.9999, ...
                                  GRAPH_CHOICE, NORMALIZE, PRUNE, constPar);
-% pause(3)
-% close all
-%% ************************************************************************
+
+%% **************************************************************************
 %               ONLINE LEARNING (RAMS GRADIENT DESCENT)                   *
 % *************************************************************************
 
 %run scrpt_phantomx_morphology_online_learning_rams
 clc
-% proprioception = signals([q_indices, dq_indices, torque_indices, ang_vel_indices, lin_vel_indices, ang_acc_indices, lin_acc_indices],:);
-A_kin_mst = mi_graphs.G_kin_mst.adjacency;
-A_kin_pi  = A_kin_mst(constPar.noj+1:end,constPar.noj+1:end);
+% signals_RAMS = signals([q_indices, dq_indices, torque_indices, ang_vel_indices, lin_vel_indices, ang_acc_indices, lin_acc_indices],:);
 
-buffer.flush();
-IS_ACC     = true;
-max_epochs = 15000;
-total_runs = 1;
-J_log      = zeros(max_epochs,total_runs);
-
-
-% Penalty factor for the joint center point vectors
-constPar.beta = 0.01;
-
-disp('Computing...')
-for loop = 1:total_runs%11:50%total_runs
-%     xi_0         = rand(3,1);
-    xi_0         = ones(3,1);
-    xi_0         = xi_0/norm(xi_0);
-    phi_0        = wrapToPi(deg2rad(45));
-    % phi_0        = 1*pi/12;%wrapToPi(deg2rad(randi(360)));
-%     zeta_0       = rand(3,1);
-    zeta_0       = ones(3,1);
-    zeta_0       = zeta_0/norm(zeta_0);
-    gamma_hat_0  = [xi_0;phi_0;zeta_0];
-    rho_hat_0    = 1E-3*ones(6,1);
-    lambda_hat_0 = [gamma_hat_0;
-                    rho_hat_0];
-
-    [lambda_hat_online_float_test, ~, J_log(:,loop)] = ...
-        fcn_robot_kinematics_rams_online_learning(propioceptiveSignals, ...
-                                                  lambda_hat_0, ...
-                                                  IS_ACC, ...
-                                                  A_kin_pi, ...
-                                                  max_epochs, ...
-                                                  buffer, ...
-                                                  BATCH_SIZE, ...
-                                                  constPar);
+signals_RAMS = [franka_proprioception(1:3*constPar.noj,:); ...
+                franka_proprioception([3*constPar.noj+1:3*constPar.noj + 3*constPar.nob],:); ...
+                0*franka_proprioception([3*constPar.noj+1:3*constPar.noj + 3*constPar.nob],:); ...
+                0*franka_proprioception([3*constPar.noj+1:3*constPar.noj + 3*constPar.nob],:); ...
+                franka_proprioception([3*constPar.noj+3*constPar.nob+1:3*constPar.noj+6*constPar.nob],:)];
+A_kin_pi     = mi_graphs.G_kin_mst.adjacency;
+A_kin_pi     = A_kin_pi(constPar.noj+1:end,constPar.noj+1:end);
+[parents, children] = find(triu(A_kin_pi) == 1);
+MOVING_BASE =1;
+if MOVING_BASE == 0
+    [lambda_hat_online_fix, lambda_rams_mav_fix] = fcn_robot_morphology_rams_online_learning(signals_RAMS, true, A_kin_pi, 5000, constPar);
+else
+    [lambda_hat_online_float, lambda_rams_mav_float] = fcn_robot_morphology_rams_online_learning(signals_RAMS, true, A_kin_pi, 120000, constPar);
 end
-%% Display the learned kinematic description
+%% Online
 clc
-close all
-[parents, children]                = find(triu(A_kin_pi) == 1);
-constPar.displayJointConfiguration =  [0 0 0 0 0 deg2rad(120) 0]';
-h = figure('color','w','units','normalized','outerposition',[0 0 1 1]);
-fcn_franka_display_learned_morphology(lambda_hat_online_float_test, ...
-    constPar.p_R_c, ...
-    constPar.panda, ...
-    constPar, ...
-    mi_graphs, ...
-    parents, ...
-    children, 0, h);
+% constPar.displayJointConfiguration =  [0 0 0 0 0 deg2rad(120) 0]';
+constPar.displayJointConfiguration =  q_panda(:,randi(numel(time)));
+h = figure('color','w');
+% fcn_poppy_display_learned_morphology(mean(lambda_rams(:,:,end-1000:end),3), p_R_c, poppy, constPar, mi_graphs, parents, children, h)
+fcn_franka_display_learned_morphology(lambda_hat_online_float, p_R_c, panda, constPar, mi_graphs, parents, children, MOVING_BASE, h)
