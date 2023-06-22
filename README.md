@@ -7,6 +7,7 @@ This is the accompanying repository for the manuscript titled `Close Your Eyes a
 # Requirements
 
  - MATLAB's Robotics System Toolbox
+ - MATLAB's Optimization Toolbox
  - Tool­boxes for opti­mization on manifolds and matrices  [MANOPT](https://www.manopt.org/)
  - Java Information Dynamics Toolkit [JIDT](https://github.com/jlizier/jidt)
 
@@ -22,6 +23,8 @@ Versions of the toolboxes used are included in this repository, check if you wan
 
 1. Add directories to search path, in MATLAB's command line: `run init_path.m`
 
-2. To see the results for the robot manipulator open `franka.m`. The different sections of the code are self-explanatory
+2. To see the results for the simulated robot manipulator open `franka_simulated.m`. The different sections of the code are self-explanatory
 
-3. To see the results for the robot manipulator open `phantomx.m`. The different sections of the code are self-explanatory
+3. To see the results for the physical robot manipulator open `franka_physical.m`. The different sections of the code are self-explanatory
+
+4. To see the results for the robot manipulator open `phantomx.m`. The different sections of the code are self-explanatory

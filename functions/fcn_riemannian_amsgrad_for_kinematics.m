@@ -3,7 +3,6 @@ function [m, v, v_hat, tau, lambda_update, rho_G_avg, eta_avg] = ...
     m, v, v_hat, tau, eta_max, rgrad_J, P, update_grad, ...
     Mfd, GD_METHOD ,SIMPLE, constPar)
 
-
     % Constants ***********************************************************
     NOJ              = constPar.noj;
     N_PARAM_PER_LINK = 13;
@@ -13,23 +12,17 @@ function [m, v, v_hat, tau, lambda_update, rho_G_avg, eta_avg] = ...
     P_update       = zeros(N_PARAM_PER_LINK,NOJ);
     rho_G_agg      = 0;
     
-
     % Loop over JOINTS ****************************************************
     for jnt = 1:NOJ
        
         P_jnt     = P(:,jnt);
         G_jnt     = rgrad_J(:,jnt);
-                
-        
+
         if ~update_grad
             P_update(:,jnt) = P_jnt;
             rho_G_agg     = 0;
         else
-            
-            %GD_METHOD = 'RSGD';
-            
             % Riemannian gradient of the i-th manifold
-            
             switch GD_METHOD
                 case 'RSGD'
                 % Standard Riemannian Stochastic Gradient Descent
@@ -38,7 +31,6 @@ function [m, v, v_hat, tau, lambda_update, rho_G_avg, eta_avg] = ...
                     rho_G_jnt(2)      = Mfd.norm(P_jnt(4), G_jnt(4));
                     rho_G_jnt(3)      = Mfd.norm(P_jnt(5:7), G_jnt(5:7));
                     rho_G_jnt(4)      = norm(P_jnt(8:13));
-                    
                     
                     rho_G_agg         = rho_G_agg + mean(rho_G_jnt);                    
                     P_update(1:3,jnt) = Mfd.exp(P_jnt(1:3), -alpha*G_jnt(1:3));
@@ -92,39 +84,10 @@ function [m, v, v_hat, tau, lambda_update, rho_G_avg, eta_avg] = ...
                         
                         tau(:,jnt)         = m(:,jnt);
                     end
-                        
             end          
         end
-        
-        
         rho_G_avg = rho_G_agg/jnt;
-%         % Update inertial parameters ======================================
-%         % Density weighted covariance matrix Sigma
-%         Sigma_i_update = P_update(1:3,1:3,jnt);
-% 
-%         % Compute updated inertia matrix based on Sigma
-%         I_i_update   = trace(Sigma_i_update)*eye(3) - Sigma_i_update;
-% 
-%         theta_i_update(:,jnt) = [P_update(4,4,jnt),...
-%                                P_update(1,4,jnt),...
-%                                P_update(2,4,jnt),...
-%                                P_update(3,4,jnt),...
-%                                I_i_update(1,1),...
-%                                I_i_update(1,2),...
-%                                I_i_update(1,3),...
-%                                I_i_update(2,2),...
-%                                I_i_update(2,3),...
-%                                I_i_update(3,3)]';
     end  
-
     lambda_update = P_update;
     eta_avg       = 1/constPar.noj*sum(eta_adaptive);
-
 end
-
-
-%     m          = beta1.*m + (1 - beta1) .* (gradJ);       % - Update biased 1st moment estimate
-%     v          = beta2.*v + (1 - beta2) .* (gradJ.^2);    % - Update biased 2nd raw moment estimate 
-%     vHat       = max(vHat, v);                            % - Compute bias-corrected 2nd raw moment estimate
-%     learn_rate = alpha./(sqrt(vHat) + epsilon);
-%     theta_hat  = theta_hat - learn_rate.*m;                            
