@@ -19,6 +19,7 @@ All datasets are publicly available at Kaggle; these are the corresponding links
  - Simulated robot manipulator with fixed base [here](https://www.kaggle.com/datasets/fernandodazledezma/frankaproprioceptionsimulatedfixedbase)
  - Physical manipulator experiment (fixed base) [here](https://www.kaggle.com/datasets/fernandodazledezma/frankaproprioceptionrealfixedbase)
  - Simulated hexpod robot [here](https://www.kaggle.com/datasets/fernandodazledezma/phantomx-proprioception)
+ - Simulated humanoid robot [here](https://www.kaggle.com/datasets/fernandodazledezma/humanoid-proprioception)
  
  All datasets must be stored in the  <u>`data`</u>  directory.
 
