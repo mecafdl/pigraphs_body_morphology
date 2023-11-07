@@ -1,4 +1,3 @@
-
 This is the accompanying repository for the manuscript titled `Close Your Eyes and Tell Me What You See: From Proprioceptive Sensing to Robot Morphology`. The repository contains:
 
 - Links to data sets and 
@@ -11,7 +10,7 @@ This is the accompanying repository for the manuscript titled `Close Your Eyes a
  - Tool­boxes for opti­mization on manifolds and matrices  [MANOPT](https://www.manopt.org/)
  - Java Information Dynamics Toolkit [JIDT](https://github.com/jlizier/jidt)
  
- NOTE: MATLAB 2021b was used.
+ NOTE: <u>MATLAB 2021b</u> was used.
 
 ## Getting the datasets
 All datasets are publicly available at Kaggle; these are the corresponding links:
@@ -28,8 +27,12 @@ Versions of the toolboxes used are included in this repository, check if you wan
 
 1. Add directories to search path, in MATLAB's command line: `run init_path.m`
 
-2. To see the results for the simulated robot manipulator open `frankaArmSimulated.m`. The different sections of the code are self-explanatory
+2. To see the results for the simulated robot manipulator open `frankaArmSimulated.m`. 
 
-3. To see the results for the physical robot manipulator open `frankaArmPhysical.m`. The different sections of the code are self-explanatory
+3. To see the results for the physical robot manipulator open `frankaArmPhysical.m`.
 
-4. To see the results for the robot manipulator open `phantomxHexapod.m`. The different sections of the code are self-explanatory
+4. To see the results for the hexapod robot open `phantomxHexapod.m`.
+
+5. To see the results for the humanoid robot open `poppyHumanoid.m`.
+
+The different sections in the scripts are self-explanatory.
