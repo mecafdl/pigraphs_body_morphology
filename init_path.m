@@ -3,6 +3,8 @@ cd(fileparts(which(mfilename)));
 
 % Add paths to function and toolbox directories
 addpath(genpath(fullfile(pwd,"functions")))
+addpath(genpath(fullfile(pwd,"data")))
+addpath(genpath(fullfile(pwd,"parameters")))
 addpath(genpath(fullfile(pwd,"external_toolboxes","infodynamics-dist-1.5")))
 addpath(genpath(fullfile(pwd,"external_toolboxes","mi.0.912")))
 addpath(genpath(fullfile(pwd,"external_toolboxes","minimum_bounding_spheres")))

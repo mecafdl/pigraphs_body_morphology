@@ -92,15 +92,17 @@ if ~MOVING_BASE
         point_end_jnt_p = w_T_sc(:,:,c)*[(-rho_hat(4:6,c-1));1];
         v1              = [point_start(1),point_start(2),point_start(3)];
         v2              = [point_end_jnt_p(1),point_end_jnt_p(2),point_end_jnt_p(3)];
-        arrow3(v1,v2,['m:' '3'],0.1,0.1) 
+        %arrow3(v1,v2,['m:' '3'],0.1,0.1) 
+        arrow3(v1,v2,['m',':','3.0'],0.2,0.3)  
     
         % Axis j+1 in sensor j position vector --------------------------------
         point_start     = w_T_sc(1:3,4,p);
         point_end_jnt_c = w_T_sc(:,:,p)*[(-rho_hat(1:3,c-1));1];
         v1              = [point_start(1),point_start(2),point_start(3)];
         v2              = [point_end_jnt_c(1),point_end_jnt_c(2),point_end_jnt_c(3)];
-        arrow3(v1,v2,['k:' '3'],0.1,0.1)           
-    
+        %arrow3(v1,v2,['k:' '3'],0.1,0.1)           
+        arrow3(v1,v2,['k',':','3.0'],0.2,0.3)  
+
         % Axis translated to identified joint center point --------------------
         jointAxis    = 0.1*gamma_hat(5:7,c-1);
         rotAxisStart = w_T_sc(:,:,c)*[(-rho_hat(4:6,c-1));1];
@@ -109,7 +111,8 @@ if ~MOVING_BASE
         v2=[rotAxisEnd(1),rotAxisEnd(2),rotAxisEnd(3)];
         v=[v2;v1];
     %     plot3(v(:,1),v(:,2),v(:,3),'y-','LineWidth',6)
-        arrow3(v1,v2,['_b-' '3'],0.5,0.4)
+        %arrow3(v1,v2,['_b-' '3'],0.5,0.4)
+        aux = mArrow3(v1,v2,'color','blue','stemWidth',0.003,'tipWidth',0.01,'facealpha',1);
     %     text(1.01*rotAxisEnd(1),1.01*rotAxisEnd(2),1.01*rotAxisEnd(3), ...
     %          strcat('$\zeta_{',constPar.suffixes(c),'}$'), ...
     %          'interpreter','latex','FontSize',20)
@@ -195,14 +198,16 @@ else
         point_end_jnt_p = w_T_sc_hat(:,:,c)*[(-rho_hat(4:6,c-1));1];
         v1              = [point_start(1),point_start(2),point_start(3)];
         v2              = [point_end_jnt_p(1),point_end_jnt_p(2),point_end_jnt_p(3)];
-        arrow3(v1,v2,['m:' '3'],0.1,0.1) 
-    
+        %arrow3(v1,v2,['m:' '3'],0.1,0.1) 
+        arrow3(v1,v2,['m',':','3.0'],0.2,0.3)  
+
         % Axis j+1 in sensor j position vector --------------------------------
         point_start     = w_T_sc_hat(1:3,4,p);
         point_end_jnt_c = w_T_sc_hat(:,:,p)*[(-rho_hat(1:3,c-1));1];
         v1              = [point_start(1),point_start(2),point_start(3)];
         v2              = [point_end_jnt_c(1),point_end_jnt_c(2),point_end_jnt_c(3)];
-        arrow3(v1,v2,['k:' '3'],0.1,0.1)           
+        %arrow3(v1,v2,['k:' '3'],0.1,0.1)           
+        arrow3(v1,v2,['k',':','3.0'],0.2,0.3)  
     
         % Axis translated to identified joint center point --------------------
         jointAxis    = 0.1*gamma_hat(5:7,c-1);
@@ -212,7 +217,8 @@ else
         v2=[rotAxisEnd(1),rotAxisEnd(2),rotAxisEnd(3)];
         v=[v2;v1];
     %     plot3(v(:,1),v(:,2),v(:,3),'y-','LineWidth',6)
-        arrow3(v1,v2,['_b-' '3'],0.5,0.4)
+%         arrow3(v1,v2,['_b-' '3'],0.5,0.4)
+        aux = mArrow3(v1,v2,'color','blue','stemWidth',0.003,'tipWidth',0.01,'facealpha',1);
     %     text(1.01*rotAxisEnd(1),1.01*rotAxisEnd(2),1.01*rotAxisEnd(3), ...
     %          strcat('$\zeta_{',constPar.suffixes(c),'}$'), ...
     %          'interpreter','latex','FontSize',20)

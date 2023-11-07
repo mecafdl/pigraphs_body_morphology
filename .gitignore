@@ -5,7 +5,8 @@
 *.m~
 
 # Large MAT files and non required directories
+/data/
 /data/*.mat
-/data/phantomx/
+/data/trash/
 /archive/
 

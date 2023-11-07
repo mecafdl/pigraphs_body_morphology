@@ -1,4 +1,4 @@
-%% **************************************************************************
+%% **********************************************************************
 %         MORPHOLOGY LEARNING OF THE FRANKA EMIKA ROBOT MANIPULATOR
 % *************************************************************************
 
@@ -6,34 +6,42 @@ clearvars
 clc
 close all
 
+% Change to the directory hosting the current file
+cd(fileparts(matlab.desktop.editor.getActiveFilename));
+
+% Addpahts
+addpath(genpath('./data'))
+addpath(genpath('./functions'))
+addpath(genpath('./external_toolboxes'))
+
 % Load configuration parameters
-load('./data/franka_parameters.mat')
+load('./parameters/franka_parameters.mat')
 
 % Load the dataset
+armSignals = fcn_loadRobotArmData();
+
 MOVING_BASE = 1;
 if ~MOVING_BASE
-    load('./data/franka_proprioception_simulated_fixed_base.mat')
+    proprioception = [armSignals.fixedBase.jointPosition; ...
+                      armSignals.fixedBase.jointVelocity; ...
+                      armSignals.fixedBase.jointTorque; ...
+                      armSignals.fixedBase.bodyAngularVelocity; ...
+                      armSignals.fixedBase.bodyLinearVelocity; ...
+                      armSignals.fixedBase.bodyAngularAcceleration; ...
+                      armSignals.fixedBase.bodyLinearAcceleration
+                      ];
 else
-    load('./data/franka_proprioception_simulated_moving_base.mat')
+    proprioception = [armSignals.movingBase.jointPosition; ...
+                      armSignals.movingBase.jointVelocity; ...
+                      armSignals.movingBase.jointTorque; ...
+                      armSignals.movingBase.bodyAngularVelocity; ...
+                      armSignals.movingBase.bodyLinearVelocity; ...
+                      armSignals.movingBase.bodyAngularAcceleration; ...
+                      armSignals.movingBase.bodyLinearAcceleration
+                      ];
 end
-q_indices       = 1:7;
-dq_indices      = 8:14;
-ddq_indices     = 15:21;
-torque_indices  = 22:28;
-ang_vel_indices = 29:52;
-lin_vel_indices = 53:76;
-ang_acc_indices = 77:100;
-lin_acc_indices = 101:124;   
 
-
-proprioception = signals([q_indices, ...
-                          dq_indices, ...
-                          torque_indices, ...
-                          ang_vel_indices, ...
-                          lin_vel_indices, ...
-                          ang_acc_indices, ...
-                          lin_acc_indices],:);
-%% **************************************************************************
+%% **********************************************************************
 %                       COMPUTATION OF THE MI MATRIX                      *
 % *************************************************************************
 close all
@@ -45,7 +53,7 @@ BUFFER_SIZE = 10000;
 % Initialize the replay buffer
 buffer = replayBuffer(BUFFER_SIZE, size(proprioception,1));
 
-n_mi_matrices = round(length(signals)/BATCH_SIZE);
+n_mi_matrices = round(length(proprioception)/BATCH_SIZE);
 
 total_loops                = 1;
 n_datasets                 = 5;
@@ -135,6 +143,7 @@ for loop = 1:total_loops
     end
 end
 cprintf('*green', '>> MI matrix ready!\n')
+
 figure('color','w')
 semilogy(abs(diffTotalMutalInformation(1:batch)))
 hold on;
@@ -143,7 +152,6 @@ plot(5E-3*ones(size(diffTotalMutalInformation(1:batch))),'r--')
 ylabel('|\Delta TMI|')
 xlabel('Batches')
 xlim([1 batch])
-
  
 % Display the MI matrix
 W_MI                          = squeeze(MI_cmean(:,:,batch));    
@@ -158,36 +166,41 @@ NORMALIZE    = 0;
 PRUNE        = 1; 
 mi_graphs    = fcn_plot_robot_mi_matrix_graphs(exp(W_MI) - 1*0.9999, ...
                                  GRAPH_CHOICE, NORMALIZE, PRUNE, constPar);
-% pause(3)
-% close all
-%% ************************************************************************
-%               ONLINE LEARNING (RAMS GRADIENT DESCENT)                   *
-% *************************************************************************
 
-%run scrpt_phantomx_morphology_online_learning_rams
-clc
-% proprioception = signals([q_indices, dq_indices, torque_indices, ang_vel_indices, lin_vel_indices, ang_acc_indices, lin_acc_indices],:);
+% Extract mechanical topology adjacency matrix
 A_kin_mst = mi_graphs.G_kin_mst.adjacency;
 A_kin_pi  = A_kin_mst(constPar.noj+1:end,constPar.noj+1:end);
 
-buffer.flush();
-IS_ACC     = true;
-max_epochs = 15000;
-total_runs = 1;
-J_log      = zeros(max_epochs,total_runs);
+% Artificial correction
+if ~MOVING_BASE
+    A_kin_pi(1,5) = 0;
+    A_kin_pi(5,1) = 0;
+    A_kin_pi(1,2) = 1;
+    A_kin_pi(2,1) = 1;
+end
+Extract body-to-body relationships from graph
+[parents, children] = find(triu(A_kin_pi) == 1);
 
+%% **********************************************************************
+%               ONLINE LEARNING (RAMS GRADIENT DESCENT)                   *
+% *************************************************************************
+
+clc
+
+buffer.flush();
+IS_ACCELERATION = true;
+max_epochs      = 15000;
+total_runs      = 1;
+J_log           = zeros(max_epochs,total_runs);
 
 % Penalty factor for the joint center point vectors
 constPar.beta = 0.01;
 
 disp('Computing...')
-for loop = 1:total_runs%11:50%total_runs
-%     xi_0         = rand(3,1);
+for loop = 1:total_runs
     xi_0         = ones(3,1);
     xi_0         = xi_0/norm(xi_0);
     phi_0        = wrapToPi(deg2rad(45));
-    % phi_0        = 1*pi/12;%wrapToPi(deg2rad(randi(360)));
-%     zeta_0       = rand(3,1);
     zeta_0       = ones(3,1);
     zeta_0       = zeta_0/norm(zeta_0);
     gamma_hat_0  = [xi_0;phi_0;zeta_0];
@@ -195,26 +208,83 @@ for loop = 1:total_runs%11:50%total_runs
     lambda_hat_0 = [gamma_hat_0;
                     rho_hat_0];
 
-    [lambda_hat_online_float_test, ~, J_log(:,loop)] = ...
+    [lambda_hat_online_float, ~, J_log(:,loop)] = ...
         fcn_robot_kinematics_rams_online_learning(propioceptiveSignals, ...
                                                   lambda_hat_0, ...
-                                                  IS_ACC, ...
+                                                  IS_ACCELERATION, ...
                                                   A_kin_pi, ...
                                                   max_epochs, ...
                                                   buffer, ...
                                                   BATCH_SIZE, ...
+                                                  armSignals.samplingTime, ...
                                                   constPar);
 end
-%% Display the learned kinematic description
+% Display the learned kinematic description
 clc
 close all
-[parents, children]                = find(triu(A_kin_pi) == 1);
 constPar.displayJointConfiguration =  [0 0 0 0 0 deg2rad(120) 0]';
 h = figure('color','w','units','normalized','outerposition',[0 0 1 1]);
-fcn_franka_display_learned_morphology(lambda_hat_online_float_test, ...
+fcn_franka_display_learned_morphology(lambda_hat_online_float, ...
     constPar.p_R_c, ...
     constPar.panda, ...
     constPar, ...
     mi_graphs, ...
     parents, ...
     children, 0, h);
+
+%% **********************************************************************
+%            OFFLINE LEARNING (INTERIOR POINT OPTIMIZATION)               *
+% *************************************************************************
+
+clc
+close all
+
+N_samples       = 1000;
+IS_ACCELERATION = true;
+
+constPar.displayJointConfiguration =  [0 0 0 0 0 deg2rad(120) 0]';
+
+MOVING_BASE = 1;
+
+if MOVING_BASE == 0
+
+    [gamma_hat, rho_hat, constPar] = ...
+        fcn_robot_kinematics_offline_optimization(A_kin_pi, ...
+                                                  armSignals, ...
+                                                  N_samples, ...
+                                                  MOVING_BASE, ...
+                                                  IS_ACCELERATION, ...
+                                                  constPar);
+    lambda_hat_offline_fix  = [gamma_hat;
+                               rho_hat];
+
+    h = figure('color','w','units','normalized','outerposition',[0 0 1 1]);
+    fcn_franka_display_learned_morphology(lambda_hat_offline_fix, ...
+        constPar.p_R_c, ...
+        constPar.panda, ...
+        constPar, ...
+        mi_graphs, ...
+        parents, ...
+        children, 0, h);
+else
+    [gamma_hat, rho_hat, constPar] = ...
+        fcn_robot_kinematics_offline_optimization(A_kin_pi, ...
+                                                  armSignals, ...
+                                                  N_samples, ...
+                                                  MOVING_BASE, ...
+                                                  IS_ACCELERATION, ...
+                                                  constPar);
+
+    lambda_hat_offline_float = [gamma_hat;
+                                rho_hat];
+
+    h = figure('color','w','units','normalized','outerposition',[0 0 1 1]);
+    fcn_franka_display_learned_morphology(lambda_hat_offline_float, ...
+        constPar.p_R_c, ...
+        constPar.panda, ...
+        constPar, ...
+        mi_graphs, ...
+        parents, ...
+        children, 0, h);    
+end
+cprintf('*Green', '>> Offline morphology parameters ready!!!\n')
