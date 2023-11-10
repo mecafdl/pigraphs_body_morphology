@@ -12,7 +12,17 @@ cd(fileparts(matlab.desktop.editor.getActiveFilename));
 load('./parameters/phantomx_parameters.mat','constPar')
 path_root = fullfile(pwd,'data','phantomx');
 
-[hexapodSignals, proprioceptiveSignals]  = fcn_loadHexapodRobotData(constPar);
+[hexapodProprioception, ~]  = fcn_loadHexapodRobotData(constPar);
+
+proprioceptiveSignals = [ ...
+                         hexapodProprioception.jointPosition.raw; ...
+                         hexapodProprioception.jointVelocity.raw; ...
+                         hexapodProprioception.jointTorque.raw; ...
+                         hexapodProprioception.bodyAngularVelocity.raw; ...
+                         hexapodProprioception.bodyLinearVelocity.raw; ...
+                         hexapodProprioception.bodyAngularAcceleration.numerical; 
+                         hexapodProprioception.bodyLinearAcceleration.raw; ...
+                        ];
 
 %% **********************************************************************
 %                       COMPUTATION OF THE MI MATRIX                      *
@@ -136,7 +146,7 @@ A_omg               = A_kin(constPar.noj+1:end,constPar.noj+1:end);
 %                         RAMS ONLINE LEARNING                            *
 % *************************************************************************
 
-lambda_hat_online = fcn_phantomx_morphology_online_learning_rams(hexapodSignals,parents, children, constPar);
+lambda_hat_online = fcn_phantomx_morphology_online_learning_rams(hexapodProprioception,parents, children, constPar);
 
 %% DISPLAY LEARNED KINEMATICS -------------------------------------------
 clc

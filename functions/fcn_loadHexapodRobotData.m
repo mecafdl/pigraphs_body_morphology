@@ -1,7 +1,7 @@
 function [hexapodSignals, proprioceptiveSignals] = fcn_loadHexapodRobotData(constPar)
     % Load datasets
     [filepath,~,~] = fileparts(mfilename('fullpath'));
-    hexapodData = load([filepath,'/../data/phantomx_proprioception.mat'], 'phantomx_proprioception');
+    hexapodData = load([filepath,'/../data/phantomxProprioceptionDatasets.mat'], 'phantomxProprioceptionDatasets');
     
     % The rows of each of the datasets is organized as follows:
     % - q_indices       = 1:18;
@@ -21,19 +21,18 @@ function [hexapodSignals, proprioceptiveSignals] = fcn_loadHexapodRobotData(cons
     close all
     proprioception = [];
     
-    fn = fieldnames(hexapodData.phantomx_proprioception);
+    fn = fieldnames(hexapodData.phantomxProprioceptionDatasets);
     for k=1:2%:numel(fn)
-        if( isnumeric(hexapodData.phantomx_proprioception.(fn{k})) )
+        if( isnumeric(hexapodData.phantomxProprioceptionDatasets.(fn{k})) )
             proprioception_aux = ...
-                             [hexapodData.phantomx_proprioception.(fn{k})([q_indices,dq_indices,torque_indices,ang_vel_indices],:); ...
-                              NaN*hexapodData.phantomx_proprioception.(fn{k})(ang_vel_indices,:); ...
-                              NaN*hexapodData.phantomx_proprioception.(fn{k})(lin_acc_indices,:); ...
-                              hexapodData.phantomx_proprioception.(fn{k})(lin_acc_indices,:)];
+                             [hexapodData.phantomxProprioceptionDatasets.(fn{k})([q_indices,dq_indices,torque_indices,ang_vel_indices],:); ...
+                              NaN*hexapodData.phantomxProprioceptionDatasets.(fn{k})(ang_vel_indices,:); ...
+                              NaN*hexapodData.phantomxProprioceptionDatasets.(fn{k})(lin_acc_indices,:); ...
+                              hexapodData.phantomxProprioceptionDatasets.(fn{k})(lin_acc_indices,:)];
             proprioception = [proprioception proprioception_aux];
         end
     end
     lin_acc_indices = lin_acc_indices + 2*3*constPar.nol;
-    disp('done')
     
     WITH_NOISE = 1;
     if WITH_NOISE == 1
@@ -57,29 +56,48 @@ function [hexapodSignals, proprioceptiveSignals] = fcn_loadHexapodRobotData(cons
     %                            |_______________ This is the Nyquist normalized frequency
     [b_zpf, a_zpf] = tf(d);
     
-    % Estimated Cartesian angular acceleration
+    % Sampling time
     hexapodSignals.samplingTime                  = ...
         1E-2;
+    
+    % Joint position
     hexapodSignals.jointPosition.raw             = ...
         proprioceptiveSignals(q_indices,:);
     hexapodSignals.jointPosition.zeroPhaseFilter = ...
         transpose(filtfilt(b_zpf, a_zpf, transpose(hexapodSignals.jointPosition.raw)));
+    
+    % Joint velocity
     hexapodSignals.jointVelocity.raw             = ...
         proprioceptiveSignals(dq_indices,:);
     hexapodSignals.jointVelocity.zeroPhaseFilter = ...
         transpose(filtfilt(b_zpf, a_zpf, transpose(hexapodSignals.jointVelocity.raw)));
+    
+    % Joint torque
+    hexapodSignals.jointTorque.raw             = ...
+        proprioceptiveSignals(torque_indices,:);
+    hexapodSignals.jointTorque.zeroPhaseFilter = ...
+        transpose(filtfilt(b_zpf, a_zpf, transpose(hexapodSignals.jointTorque.raw)));
+    
+    % Body angular velocity
     hexapodSignals.bodyAngularVelocity.raw = ...
         proprioceptiveSignals(ang_vel_indices,:);
     hexapodSignals.bodyAngularVelocity.zeroPhaseFilter = ...
         transpose(filtfilt(b_zpf, a_zpf, transpose(hexapodSignals.bodyAngularVelocity.raw)));
+    
+    % Body linear velocity
+    hexapodSignals.bodyLinearVelocity.raw = NaN(size(hexapodSignals.bodyAngularVelocity.raw));    
+
+    % Body angular acceleration
     hexapodSignals.bodyAngularAcceleration.numerical = ...
         gradient(hexapodSignals.bodyAngularVelocity.zeroPhaseFilter, hexapodSignals.samplingTime);
     hexapodSignals.bodyAngularAcceleration.zeroPhaseFilter = ...
         transpose(filtfilt(b_zpf, a_zpf, transpose(hexapodSignals.bodyAngularAcceleration.numerical)));
+
+    % Body linear acceleration
     hexapodSignals.bodyLinearAcceleration.raw = ...
         proprioceptiveSignals(lin_acc_indices,:);
     hexapodSignals.bodyLinearAcceleration.zeroPhaseFilter = ...
         transpose(filtfilt(b_zpf,a_zpf, transpose(hexapodSignals.bodyLinearAcceleration.raw)));
     
-    cprintf('*green', '>> Filtered signals and numerical gradients ready!\n')
+    cprintf('*red', '>> Filtered signals and numerical gradients ready!\n')
 end

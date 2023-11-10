@@ -20,22 +20,23 @@ cd(fileparts(matlab.desktop.editor.getActiveFilename));
 load('./parameters/poppy_parameters.mat','constPar')
 path_root = fullfile(pwd,'data','phantomx');
 
-load('./data/humanoidSignals.mat','humanoidSignals')
+load('./data/humanoidProprioception.mat','humanoidProprioception')
 % [hexapodSignals, proprioceptiveSignals]  = fcn_loadHexapodRobotData(constPar);
 
+cprintf('*red', '>> Loaded proprioceptive signals!\n')
 %% **********************************************************************
 %                       COMPUTATION OF THE MI MATRIX                      *
 % *************************************************************************
 close all
 clc
 
-proprioceptiveSignals = [humanoidSignals.jointPosition.raw; ...
-                         humanoidSignals.jointVelocity.raw; ...
-                         humanoidSignals.jointTorque.raw; ...
-                         humanoidSignals.bodyAngularVelocity.raw; ...
-                         humanoidSignals.bodyLinearVelocity.raw;
-                         humanoidSignals.bodyAngularAcceleration.raw; ...
-                         humanoidSignals.bodyLinearAcceleration.raw];
+proprioceptiveSignals = [humanoidProprioception.jointPosition.raw; ...
+                         humanoidProprioception.jointVelocity.raw; ...
+                         humanoidProprioception.jointTorque.raw; ...
+                         humanoidProprioception.bodyAngularVelocity.raw; ...
+                         humanoidProprioception.bodyLinearVelocity.raw;
+                         humanoidProprioception.bodyAngularAcceleration.raw; ...
+                         humanoidProprioception.bodyLinearAcceleration.raw];
 
 BATCH_SIZE  = 100;
 BUFFER_SIZE = 1000;
@@ -45,7 +46,7 @@ buffer = replayBuffer(BUFFER_SIZE, size(proprioceptiveSignals,1));
 
 n_mi_matrices = round(length(proprioceptiveSignals)/BATCH_SIZE);
 
-total_loops                = 50;
+total_loops                = 5;
 n_datasets                 = 1;
 
 for loop = 1:total_loops
@@ -149,8 +150,8 @@ A_dq_omg            = A_kin(1:constPar.noj,constPar.noj+1:end);
 A_omg               = A_kin(constPar.noj+1:end,constPar.noj+1:end);    
 [parents, children] = find(triu(A_omg) == 1);
 
-%%
-A_kin_ref = A_kin;
+%% Reference (actual) binary adjacency matrix for comparison
+A_kin_ref              = A_kin;
 A_kin_ref(1:25,27:end) = eye(25);
 A_kin_ref(27:end,1:25) = eye(25);
 figure('Color','w');
@@ -167,7 +168,6 @@ axis square
 % 
 clc
 
-% Offline
 constPar.displayConfiguration = constPar.poppy.homeConfiguration;
 
 h = figure('color','w');
