@@ -15,8 +15,7 @@ This is the accompanying repository for the manuscript titled Machine Learning D
 ## Getting the datasets
 All datasets are publicly available at Kaggle; these are the corresponding links:
 
- - Simulated robot manipulator with moving base [here](https://www.kaggle.com/datasets/fernandodazledezma/franka-proprioception-simulated-moving-base)
- - Simulated robot manipulator with fixed base [here](https://www.kaggle.com/datasets/fernandodazledezma/frankaproprioceptionsimulatedfixedbase)
+ - Simulated robot manipulator with fixed and moving base [here](https://www.kaggle.com/datasets/fernandodazledezma/armproprioceptionsimulated/data)
  - Physical manipulator experiment (fixed base) [here](https://www.kaggle.com/datasets/fernandodazledezma/frankaproprioceptionrealfixedbase)
  - Simulated hexpod robot [here](https://www.kaggle.com/datasets/fernandodazledezma/phantomx-proprioception)
  - Simulated humanoid robot [here](https://www.kaggle.com/datasets/fernandodazledezma/humanoid-proprioception)
